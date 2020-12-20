@@ -1,5 +1,11 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+generator client {
+  //generate client for multiple languages, right now we have TypeScript
+  provider = "prisma-client-js"
+  //enable some functionalities, here is aggregation api: https://www.prisma.io/docs/concepts/components/prisma-client/aggregations, to do things like group by, min max, average, etc
+  //previewFeatures = ["groupBy"]
+}
 
 datasource db {
   provider = "postgresql"
