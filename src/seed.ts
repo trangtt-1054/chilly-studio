@@ -11,7 +11,7 @@ async function main() {
   await prisma.record.deleteMany({}); //chú ý thứ tự, phải delete record trc rồi mới delete collection
   await prisma.collection.deleteMany({});
 
-  const user = await prisma.user.create({
+  const trang = await prisma.user.create({
     data: {
       email: 'trang@hey.com',
       firstName: 'Trang',
@@ -50,10 +50,20 @@ async function main() {
           },
         ],
       },
+      members: {
+        create: {
+          role: 'ADMIN',
+          user: {
+            //connect to `trang` user that was created above
+            connect: { email: trang.email },
+          },
+        },
+      },
     },
     //include: select additional fields, by default we only get scalar fields, in order to fetch relations, we have to use `include`
     include: {
       records: true,
+      members: { include: { user: true } },
     },
   });
 
