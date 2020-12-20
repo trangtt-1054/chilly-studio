@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//model phải có ít nhất 1 unique field (@unique constraint)
+model User {
+  id        Int    @id @default(autoincrement())
+  email     String @unique
+  firstName String
+  lastName  String
+  social    Json?
+}
+
+//social is a free form JSON field, we dont have to adhere to a schema, if a social network pops up, we can add fields as we like without database migration. Bình thường add new field to tables thì phải migrate
+
+//Course
+model Collection {
+  id      Int    @id @default(autoincrement())
+  name    String
+  details String //courseDetails
+}
+
+//Test
+model Record {
+  id        Int      @id @default(autoincrement())
+  updatedAt DateTime @updatedAt
+  name      String
+  date      DateTime
+}
+
+//TestResult
+model RecordRate {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  result    Int //precise to decimal
+}
