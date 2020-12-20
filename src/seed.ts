@@ -7,6 +7,8 @@ const prisma = new PrismaClient();
 
 // A `main` function so that we can use async/await, because we need to communicate with the database so we need async function
 async function main() {
+  await prisma.collectionByUser.deleteMany({});
+  await prisma.recordRate.deleteMany({});
   await prisma.user.deleteMany({}); //should not be done in production, cho đỡ bị lỗi unique constraint
   await prisma.record.deleteMany({}); //chú ý thứ tự, phải delete record trc rồi mới delete collection
   await prisma.collection.deleteMany({});
@@ -67,7 +69,72 @@ async function main() {
     },
   });
 
-  console.log(collection);
+  const andy = await prisma.user.create({
+    data: {
+      email: 'andy@hey.com',
+      firstName: 'Andy',
+      lastName: 'Boss',
+      social: {
+        facebook: 'andromache',
+        twitter: 'andromache',
+      },
+      collections: {
+        create: {
+          role: 'MEMBER',
+          collection: {
+            connect: { id: collection.id },
+          },
+        },
+      },
+    },
+  });
+
+  const memphis = await prisma.user.create({
+    data: {
+      email: 'memphis@hey.com',
+      firstName: 'Memphis',
+      lastName: 'Isis',
+      social: {
+        facebook: 'memphis.nile',
+        twitter: 'memphis.nile',
+      },
+      collections: {
+        create: {
+          role: 'MEMBER',
+          collection: {
+            connect: { id: collection.id },
+          },
+        },
+      },
+    },
+  });
+
+  const points = [50, 100, 200];
+
+  let counter = 0;
+  for (const record of collection.records) {
+    const rateOfAndy = await prisma.recordRate.create({
+      data: {
+        gradedBy: { connect: { email: trang.email } },
+        member: { connect: { email: andy.email } },
+        record: { connect: { id: record.id } },
+        point: points[counter],
+      },
+    });
+    counter++;
+  }
+
+  const rates = await prisma.recordRate.aggregate({
+    where: { memberId: andy.id },
+    avg: { point: true },
+    max: { point: true },
+    min: { point: true },
+    count: true,
+  });
+
+  console.log(rates);
+
+  //console.log(collection);
 }
 
 main()
