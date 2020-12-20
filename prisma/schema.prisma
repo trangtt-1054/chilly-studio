@@ -1,5 +1,11 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+generator client {
+  //generate client for multiple languages, right now we have TypeScript
+  provider = "prisma-client-js"
+  //enable some functionalities, here is aggregation api: https://www.prisma.io/docs/concepts/components/prisma-client/aggregations, to do things like group by, min max, average, etc
+  //previewFeatures = ["groupBy"]
+}
 
 datasource db {
   provider = "postgresql"
@@ -8,21 +14,46 @@ datasource db {
 
 //model phải có ít nhất 1 unique field (@unique constraint)
 model User {
-  id        Int    @id @default(autoincrement())
-  email     String @unique
-  firstName String
-  lastName  String
-  social    Json?
+  id          Int                @id @default(autoincrement())
+  email       String             @unique
+  firstName   String
+  lastName    String
+  social      Json?
+  //collections        Collection[] có explicit relation rồi, ko cần implicit relation nữa
+  collections CollectionByUser[] //collections là tên field mình tự đặt theo ý muốn
+
+  recordRates  RecordRate[] @relation(name: "rates")
+  recordGraded RecordRate[] @relation(name: "graded")
 }
 
 //social is a free form JSON field, we dont have to adhere to a schema, if a social network pops up, we can add fields as we like without database migration. Bình thường add new field to tables thì phải migrate
 
 //Course
 model Collection {
-  id      Int    @id @default(autoincrement())
+  id      Int                @id @default(autoincrement())
   name    String
   details String //courseDetails
+  //members            User[] có explicit relation rồi, ko cần implicit relation nữa
+  members CollectionByUser[]
+  records Record[]
 }
+
+model CollectionByUser {
+  createdAt    DateTime @default(now())
+  role         UserRole
+  //relation scalar
+  userId       Int
+  collectionId Int
+
+  //relation field
+  user       User       @relation(fields: [userId], references: [id])
+  collection Collection @relation(fields: [collectionId], references: [id])
+
+  @@id([userId, collectionId, role])
+}
+
+//@relation(fields: [userId]: field `user` is associated with field `userId`, references tell us which field is it referencing in this `User` model
+//@@id([userId, collectionId, role]) is PRIMARY KEY or unique constraint, @@id allow us to define multi-field primary key on a table, the combination of these field has to be unique. This constraint limits the ability to associate users to collection with a single role. For example if you have Alice with userId: 1, she can only be associated to a collection with a single role. Alice could be associated with same collection once as a member and once as a admin. Nếu mà bỏ role trong @@id thì 1 user chỉ associate duy nhất 1 lần với 1 collection thôi
 
 //Test
 model Record {
@@ -30,11 +61,32 @@ model Record {
   updatedAt DateTime @updatedAt
   name      String
   date      DateTime
+
+  //relation fields: use to interaction with relations in Prisma Client
+  collectionId Int
+  collection   Collection   @relation(fields: [collectionId], references: [id])
+  recordRates  RecordRate[]
 }
 
 //TestResult
 model RecordRate {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  result    Int //precise to decimal
+  point     Int //result, precise to decimal
+
+  //relation field
+  recordId Int
+  record   Record @relation(fields: [recordId], references: [id])
+  //ở model User cũng phải có relation tương tự, nói chung đã có relation ở 1 bên thì bên còn lại cũng phải có
+  memberId Int
+  member   User   @relation(name: "rates", fields: [memberId], references: [id])
+  graderId Int
+  gradedBy User   @relation(name: "graded", fields: [graderId], references: [id])
+}
+
+//khi có 2 relation fields trỏ về cùng 1 model (ở đây là memberId và graderId của RecordRate) thì sẽ bị lỗi ambiguous relation => phải thêm name vào relation
+
+enum UserRole {
+  MEMBER
+  ADMIN
 }
