@@ -1,17 +1,17 @@
-import Hapi from "@hapi/hapi";
-import boom from "@hapi/boom";
-import Joi from "@hapi/joi";
-import { join } from "@prisma/client";
+import Hapi from '@hapi/hapi';
+import boom from '@hapi/boom';
+import Joi from '@hapi/joi';
+import { join } from '@prisma/client';
 
 const userPlugin: Hapi.Plugin<undefined> = {
-  name: "app/users",
-  dependencies: ["prisma"], //load 'prisma' plugin before loading this plugin => to make sure that prisma instance is accessible inside handler
+  name: 'app/users',
+  dependencies: ['prisma'], //load 'prisma' plugin before loading this plugin => to make sure that prisma instance is accessible inside handler
   register: async function (server: Hapi.Server) {
     //server.routes, we could start defining route and handlers
     server.route([
       {
-        method: "POST",
-        path: "/users",
+        method: 'POST',
+        path: '/users',
         handler: createUserHandler,
         options: {
           validate: {
@@ -24,9 +24,24 @@ const userPlugin: Hapi.Plugin<undefined> = {
         },
       },
       {
-        method: "GET",
-        path: "/users/{userId}",
+        method: 'GET',
+        path: '/users/{userId}',
         handler: getUserHandler,
+        options: {
+          validate: {
+            params: Joi.object({
+              userId: Joi.string().pattern(/^[0-9]+$/),
+            }) as any,
+            failAction: (request, h, err) => {
+              throw err;
+            },
+          },
+        },
+      },
+      {
+        method: 'DELETE',
+        path: '/users/{userId}',
+        handler: deleteUserHandler,
         options: {
           validate: {
             params: Joi.object({
@@ -92,7 +107,7 @@ async function createUserHandler(
     return helper.response({ id: newUser.id }).code(201);
   } catch (error) {
     console.log(error);
-    return boom.badImplementation("Failed to create new user");
+    return boom.badImplementation('Failed to create new user');
   }
 }
 
@@ -102,9 +117,6 @@ async function getUserHandler(
 ) {
   const { prisma } = request.server.app;
   const userId = request.params.userId;
-
-  console.log(userId);
-
   try {
     const user = await prisma.user.findUnique({
       where: {
@@ -113,10 +125,29 @@ async function getUserHandler(
     });
 
     if (!user) {
-      return boom.notFound("User not found");
+      return boom.notFound('User not found');
     }
     return helper.response(user).code(200);
   } catch (error) {
     console.log(error);
+  }
+}
+
+async function deleteUserHandler(
+  request: Hapi.Request,
+  helper: Hapi.ResponseToolkit
+) {
+  const { prisma } = request.server.app;
+  const userId = request.params.userId;
+  try {
+    const user = await prisma.user.delete({
+      where: {
+        id: parseInt(userId, 10),
+      },
+    });
+    return helper.response().code(204);
+  } catch (error) {
+    console.log(error);
+    return boom.badImplementation('failed to delete user');
   }
 }
