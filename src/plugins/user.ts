@@ -1,6 +1,7 @@
 import Hapi from "@hapi/hapi";
 import boom from "@hapi/boom";
 import Joi from "@hapi/joi";
+import { join } from "@prisma/client";
 
 const userPlugin: Hapi.Plugin<undefined> = {
   name: "app/users",
@@ -14,21 +15,24 @@ const userPlugin: Hapi.Plugin<undefined> = {
         handler: createUserHandler,
         options: {
           validate: {
-            payload: Joi.object({
-              //define expected structure, validate input cho mình, nếu input ko hợp lệ sẽ tự trả status code 400 invalid request payload input
-              firstName: Joi.string().required(),
-              lastName: Joi.string().required(),
-              email: Joi.string().email().required(),
-              social: Joi.object({
-                facebook: Joi.string().optional(),
-                twitter: Joi.string().optional(),
-                github: Joi.string().optional(),
-                website: Joi.string().uri().optional(),
-                tiktok: Joi.string().optional(),
-              }),
-            }) as any,
+            payload: UserInputValidator as any,
             failAction: (request, h, err) => {
               //err chính là cái validation error, error trả về sẽ cụ thể hơn
+              throw err;
+            },
+          },
+        },
+      },
+      {
+        method: "GET",
+        path: "/users/{userId}",
+        handler: getUserHandler,
+        options: {
+          validate: {
+            params: Joi.object({
+              userId: Joi.string().pattern(/^[0-9]+$/),
+            }) as any,
+            failAction: (request, h, err) => {
               throw err;
             },
           },
@@ -53,6 +57,20 @@ interface UserInput {
   };
 }
 
+const UserInputValidator = Joi.object({
+  //define expected structure, validate input cho mình, nếu input ko hợp lệ sẽ tự trả status code 400 invalid request payload input
+  firstName: Joi.string().required(),
+  lastName: Joi.string().required(),
+  email: Joi.string().email().required(),
+  social: Joi.object({
+    facebook: Joi.string().optional(),
+    twitter: Joi.string().optional(),
+    github: Joi.string().optional(),
+    website: Joi.string().uri().optional(),
+    tiktok: Joi.string().optional(),
+  }),
+});
+
 async function createUserHandler(
   request: Hapi.Request,
   helper: Hapi.ResponseToolkit
@@ -75,5 +93,30 @@ async function createUserHandler(
   } catch (error) {
     console.log(error);
     return boom.badImplementation("Failed to create new user");
+  }
+}
+
+async function getUserHandler(
+  request: Hapi.Request,
+  helper: Hapi.ResponseToolkit
+) {
+  const { prisma } = request.server.app;
+  const userId = request.params.userId;
+
+  console.log(userId);
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: parseInt(userId, 10),
+      },
+    });
+
+    if (!user) {
+      return boom.notFound("User not found");
+    }
+    return helper.response(user).code(200);
+  } catch (error) {
+    console.log(error);
   }
 }
