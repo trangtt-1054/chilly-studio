@@ -1,5 +1,6 @@
 import Hapi from "@hapi/hapi";
 import boom from "@hapi/boom";
+import Joi from "@hapi/joi";
 
 const userPlugin: Hapi.Plugin<undefined> = {
   name: "app/users",
@@ -11,6 +12,27 @@ const userPlugin: Hapi.Plugin<undefined> = {
         method: "POST",
         path: "/users",
         handler: createUserHandler,
+        options: {
+          validate: {
+            payload: Joi.object({
+              //define expected structure, validate input cho mình, nếu input ko hợp lệ sẽ tự trả status code 400 invalid request payload input
+              firstName: Joi.string().required(),
+              lastName: Joi.string().required(),
+              email: Joi.string().email().required(),
+              social: Joi.object({
+                facebook: Joi.string().optional(),
+                twitter: Joi.string().optional(),
+                github: Joi.string().optional(),
+                website: Joi.string().uri().optional(),
+                tiktok: Joi.string().optional(),
+              }),
+            }) as any,
+            failAction: (request, h, err) => {
+              //err chính là cái validation error, error trả về sẽ cụ thể hơn
+              throw err;
+            },
+          },
+        },
       },
     ]);
   },
