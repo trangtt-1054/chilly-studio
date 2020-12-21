@@ -8,6 +8,8 @@ const server: Hapi.Server = Hapi.server({
   host: process.env.HOST || "localhost",
 });
 
+export async function createServer(): Promise<Hapi.Server> {}
+
 export async function start(): Promise<Hapi.Server> {
   //register a plugin
   await server.register([StatusPlugin, prismaPlugin, userPlugin]);
