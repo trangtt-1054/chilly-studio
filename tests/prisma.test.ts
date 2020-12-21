@@ -1,15 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
-describe('example test with Prisma Client', () => {
+describe("example test with Prisma Client", () => {
   let prisma = new PrismaClient();
 
   beforeAll(async () => {
-    await prisma.connect();
+    await prisma.$connect();
   });
   afterAll(async () => {
-    await prisma.disconnect();
+    await prisma.$disconnect();
   });
-  test('test query', async () => {
+  test("test query", async () => {
     const data = await prisma.user.findMany({ take: 1, select: { id: true } });
     expect(data).toBeTruthy();
   });
