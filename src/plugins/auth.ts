@@ -13,11 +13,17 @@ interface LoginInput {
   email: string;
 }
 
+interface AuthenticateInput {
+  email: string;
+  emailToken: string;
+}
+
 export const API_AUTH_STRATEGY = 'API'; //a constant to use as the name for authentication strategy
 
 const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_BY_TRANG';
 const JWT_ALGORITHM = 'HS256';
 const EMAIL_TOKEN_EXPIRATION_MINUTES = 10;
+const AUTHENTICATION_TOKEN_EXPIRATION_HOURS = 12;
 
 declare module '@hapi/hapi' {
   interface AuthCredentials {
@@ -131,7 +137,6 @@ const loginHandler = async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {
         },
       },
     });
-    console.log(email);
     await sendEmailToken(email, emailToken);
     return h.response().code(200);
   } catch (error) {
@@ -140,10 +145,68 @@ const loginHandler = async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {
   }
 };
 
-const authenticateHandler = (
+const authenticateHandler = async (
   request: Hapi.Request,
   h: Hapi.ResponseToolkit
-) => {};
+) => {
+  const { prisma } = request.server.app;
+  const { email, emailToken } = request.payload as AuthenticateInput;
+
+  //verify that this emailToken matches the user
+  try {
+    const fetchedEmailToken = await prisma.token.findUnique({
+      where: { emailToken },
+      include: {
+        user: true, //explicitly tell prisma to return user because by defaut Prisma only returns scalar field
+      },
+    });
+
+    if (fetchedEmailToken?.expiration! < new Date()) {
+      return Boom.unauthorized('Token expired!');
+    }
+
+    if (!fetchedEmailToken?.valid) {
+      return Boom.unauthorized('Invalid Token!!!');
+    }
+
+    if (fetchedEmailToken && fetchedEmailToken.user.email === email) {
+      ``; //check if email passed in matches the one found in token
+      const tokenExpiration = add(new Date(), {
+        hours: AUTHENTICATION_TOKEN_EXPIRATION_HOURS,
+      });
+
+      //create a long lived token to be referenced in the JWT payload
+      const createdToken = await prisma.token.create({
+        data: {
+          type: TokenType.API,
+          expiration: tokenExpiration,
+          user: {
+            connect: {
+              email,
+            },
+          },
+        },
+      });
+
+      //invalidate emailToken (we can only use emailToken once)
+      await prisma.token.update({
+        where: {
+          id: fetchedEmailToken.id,
+        },
+        data: {
+          valid: false,
+        },
+      });
+
+      //add the token ID of createdToken above to the JWT payload
+      const authToken = generateApiToken(createdToken.id);
+      return h.response().code(200).header('Authorization', authToken);
+    }
+  } catch (error) {
+    console.log(error);
+    return Boom.badImplementation(error.message);
+  }
+};
 
 const generateApiToken = (tokenId: number) => {
   const jwtPayload = { tokenId };
@@ -207,7 +270,7 @@ const authPlugin: Hapi.Plugin<null> = {
               throw err;
             },
             payload: Joi.object({
-              email: Joi.string().email().required,
+              email: Joi.string().email().required(),
               emailToken: Joi.string().required(),
             }),
           },
