@@ -5,10 +5,19 @@ import jwt from 'jsonwebtoken';
 import { TokenType, UserRole } from '@prisma/client';
 import { add, compareAsc } from 'date-fns';
 
-const API_AUTH_STRATEGY = 'API'; //a constant to use as the name for authentication strategy
+interface APITokenPayload {
+  tokenId: number;
+}
+
+interface LoginInput {
+  email: string;
+}
+
+export const API_AUTH_STRATEGY = 'API'; //a constant to use as the name for authentication strategy
 
 const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_BY_TRANG';
 const JWT_ALGORITHM = 'HS256';
+const EMAIL_TOKEN_EXPIRATION_MINUTES = 10;
 
 declare module '@hapi/hapi' {
   interface AuthCredentials {
@@ -20,12 +29,11 @@ declare module '@hapi/hapi' {
   }
 }
 
-interface APITokenPayload {
-  tokenId: number;
-}
-
+//runtime validation
 const apiTokenSchema = Joi.object({
   tokenId: Joi.number().integer().required(),
+  iat: Joi.any(),
+  exp: Joi.any(),
 });
 
 const validateAPIToken = async (
@@ -33,7 +41,9 @@ const validateAPIToken = async (
   request: Hapi.Request,
   h: Hapi.ResponseToolkit
 ) => {
+  //có đc type PrismaClient ở đây là nhờ declare module ở bên prisma.ts
   const { prisma } = request.server.app;
+
   const { tokenId } = decoded;
   const { error } = apiTokenSchema.validate(decoded); //run-time validator
 
@@ -91,6 +101,62 @@ const validateAPIToken = async (
   }
 };
 
+const loginHandler = async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {
+  const { prisma, sendEmailToken } = request.server.app;
+  const { email } = request.payload as LoginInput;
+  const emailToken = generateEmailToken();
+
+  const tokenExpiration = add(new Date(), {
+    minutes: EMAIL_TOKEN_EXPIRATION_MINUTES,
+  });
+
+  try {
+    //create a user if it doesn't exist and a short-lived token
+    const createdToken = await prisma.token.create({
+      data: {
+        emailToken,
+        expiration: tokenExpiration,
+        type: TokenType.EMAIL,
+        user: {
+          //vì endpoint này vừa connect vừa create đc nên dùng connectOrCreate
+          connectOrCreate: {
+            create: {
+              email,
+            },
+            //trong trường hợp connecting thì dùng where, chưa có thì sẽ dùng cái create ở trên
+            where: {
+              email,
+            },
+          },
+        },
+      },
+    });
+    console.log(email);
+    await sendEmailToken(email, emailToken);
+    return h.response().code(200);
+  } catch (error) {
+    console.log(error);
+    return Boom.badImplementation(error.message);
+  }
+};
+
+const authenticateHandler = (
+  request: Hapi.Request,
+  h: Hapi.ResponseToolkit
+) => {};
+
+const generateApiToken = (tokenId: number) => {
+  const jwtPayload = { tokenId };
+  return jwt.sign(jwtPayload, JWT_SECRET, {
+    algorithm: JWT_ALGORITHM,
+  });
+};
+
+//generate an 8-digit number
+const generateEmailToken = (): string => {
+  return Math.floor(10000000 + Math.random() * 90000000).toString();
+};
+
 const authPlugin: Hapi.Plugin<null> = {
   name: 'app/auth',
   dependencies: ['prisma', 'hapi-auth-jwt2', 'app/email'],
@@ -103,9 +169,51 @@ const authPlugin: Hapi.Plugin<null> = {
     server.auth.strategy(API_AUTH_STRATEGY, 'jwt', {
       key: JWT_SECRET,
       verifyOption: { algorithms: JWT_ALGORITHM },
-      validate: () => {},
+      validate: validateAPIToken,
     });
     //the strategy here is an instance of the scheme, the scheme has already been defined by this hapi-auth-jwt. cái 'jwt' arg thứ 2 là cái default 'jwt' (see doc)
+
+    // we will tell all of our endpoints by default to use this strategy, this will secure all of our endpoints
+    server.auth.default(API_AUTH_STRATEGY);
+
+    server.route([
+      //login or register to send the short lived token
+      {
+        method: 'POST',
+        path: '/login',
+        handler: loginHandler,
+        options: {
+          auth: false, //auth false vì endpoint này đc open to user
+          validate: {
+            failAction: (request, h, err) => {
+              throw err;
+            },
+            payload: Joi.object({
+              email: Joi.string().email().required(),
+            }),
+          },
+        },
+      },
+
+      //authenticate magiclink and to generate a long lived token
+      {
+        method: 'POST',
+        path: '/authenticate',
+        handler: authenticateHandler,
+        options: {
+          auth: false,
+          validate: {
+            failAction: (request, h, err) => {
+              throw err;
+            },
+            payload: Joi.object({
+              email: Joi.string().email().required,
+              emailToken: Joi.string().required(),
+            }),
+          },
+        },
+      },
+    ]);
   },
 };
 

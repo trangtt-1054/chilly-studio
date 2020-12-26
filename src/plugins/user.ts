@@ -1,7 +1,6 @@
 import Hapi from '@hapi/hapi';
 import boom from '@hapi/boom';
 import Joi from '@hapi/joi';
-import { join } from '@prisma/client';
 
 const userPlugin: Hapi.Plugin<undefined> = {
   name: 'app/users',

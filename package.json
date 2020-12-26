@@ -15,6 +15,7 @@
     "date-fns": "^2.15.0",
     "dotenv": "^8.2.0",
     "hapi-auth-jwt2": "^10.2.0",
+    "joi": "^17.3.0",
     "jsonwebtoken": "^8.5.1"
   },
   "devDependencies": {
@@ -22,6 +23,7 @@
     "@types/hapi__hapi": "^20.0.3",
     "@types/hapi__joi": "^17.1.6",
     "@types/jest": "^26.0.4",
+    "@types/joi": "^14.3.4",
     "@types/node": "^14.14.14",
     "jest": "^26.1.0",
     "ts-jest": "^26.1.2",

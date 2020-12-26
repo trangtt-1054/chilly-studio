@@ -2,6 +2,9 @@ import Hapi from '@hapi/hapi';
 import StatusPlugin from './plugins/status';
 import prismaPlugin from './plugins/prisma';
 import userPlugin from './plugins/user';
+import authPlugin from './plugins/auth';
+import hapiAuthJWT from 'hapi-auth-jwt2';
+import emailPlugin from './plugins/email';
 
 const server: Hapi.Server = Hapi.server({
   port: process.env.PORT || 3000,
@@ -9,7 +12,14 @@ const server: Hapi.Server = Hapi.server({
 });
 
 export async function createServer(): Promise<Hapi.Server> {
-  await server.register([StatusPlugin, prismaPlugin, userPlugin]);
+  await server.register([
+    StatusPlugin,
+    prismaPlugin,
+    userPlugin,
+    hapiAuthJWT,
+    emailPlugin,
+    authPlugin,
+  ]);
   await server.initialize();
 
   return server;

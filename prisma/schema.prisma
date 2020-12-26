@@ -16,8 +16,8 @@ datasource db {
 model User {
   id          Int                @id @default(autoincrement())
   email       String             @unique
-  firstName   String
-  lastName    String
+  firstName   String?
+  lastName    String?
   social      Json?
   //collections        Collection[] có explicit relation rồi, ko cần implicit relation nữa
   collections CollectionByUser[] //collections là tên field mình tự đặt theo ý muốn
