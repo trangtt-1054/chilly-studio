@@ -19,7 +19,7 @@ export async function isOwnerOfCollectionOrAdmin(
     return h.continue;
   }
   // If the user is not a teacher of the course, deny access
-  throw Boom.forbidden();
+  throw Boom.forbidden('Sorry, only owner of collection can update this');
 }
 
 // Pre function to check if authenticated user is the grader of a testResult
