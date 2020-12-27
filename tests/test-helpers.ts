@@ -44,15 +44,15 @@ export const createUserCredentials = async (
 export const createCourseTestStudentTeacher = async (
   prisma: PrismaClient
 ): Promise<{
-  courseId: number;
-  testId: number;
-  studentId: number;
-  teacherId: number;
-  studentCredentials: AuthCredentials;
-  teacherCredentials: AuthCredentials;
+  collectionId: number;
+  recordId: number;
+  viewerId: number;
+  ownerId: number;
+  viewerCredentials: AuthCredentials;
+  ownerCredentials: AuthCredentials;
 }> => {
-  const teacherCredentials = await createUserCredentials(prisma, false);
-  const studentCredentials = await createUserCredentials(prisma, false);
+  const ownerCredentials = await createUserCredentials(prisma, false);
+  const viewerCredentials = await createUserCredentials(prisma, false);
 
   const now = Date.now().toString();
   const course = await prisma.collection.create({
@@ -65,7 +65,7 @@ export const createCourseTestStudentTeacher = async (
             role: UserRole.OWNER,
             user: {
               connect: {
-                id: teacherCredentials.userId,
+                id: ownerCredentials.userId as number,
               },
             },
           },
@@ -73,7 +73,7 @@ export const createCourseTestStudentTeacher = async (
             role: UserRole.VIEWER,
             user: {
               connect: {
-                id: studentCredentials.userId,
+                id: viewerCredentials.userId as number,
               },
             },
           },
@@ -94,15 +94,16 @@ export const createCourseTestStudentTeacher = async (
   });
 
   // 👇Update the credentials as they're static in tests (not fetched automatically on request by the auth plugin)
-  teacherCredentials.ownerOf.push(course.id);
+  const ownerOf = ownerCredentials.ownerOf as number[];
+  ownerOf.push(course.id);
 
   return {
-    courseId: course.id,
-    testId: course.records[0].id,
-    teacherId: teacherCredentials.userId,
-    teacherCredentials,
-    studentId: studentCredentials.userId,
-    studentCredentials,
+    collectionId: course.id,
+    recordId: course.records[0].id,
+    ownerId: ownerCredentials.userId as number,
+    ownerCredentials: ownerCredentials,
+    viewerId: viewerCredentials.userId as number,
+    viewerCredentials: viewerCredentials,
   };
 };
 
