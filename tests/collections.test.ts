@@ -3,6 +3,8 @@ import Hapi, { AuthCredentials } from '@hapi/hapi';
 import { createUserCredentials } from './test-helpers';
 import { API_AUTH_STRATEGY } from '../src/plugins/auth';
 
+//These tests run against real database => integration tests
+
 describe('collections endpoints', () => {
   let server: Hapi.Server;
   let testUserCredentials: AuthCredentials;
@@ -11,7 +13,7 @@ describe('collections endpoints', () => {
   beforeAll(async () => {
     server = await createServer();
 
-    // Create a test user and admin and get the credentials object for them
+    // Create a test user and admin and get the credentials object for them, nếu ko mock credential này thì tất cả test sẽ fail
     testUserCredentials = await createUserCredentials(server.app.prisma, false);
     testAdminCredentials = await createUserCredentials(server.app.prisma, true);
   });
@@ -40,7 +42,7 @@ describe('collections endpoints', () => {
     expect(response.statusCode).toEqual(201);
 
     collectionId = JSON.parse(response.payload)?.id;
-    // 👇Update the credentials as they're static in tests (not fetched automatically on request by the auth plugin)
+    // 👇Update the credentials as they're static in tests (not fetched automatically on request by the auth plugin). when we create collection, testUserCredentials isn't updated (cụ thể là cái ownerOf ko đc update nên bên dưới update collection sẽ fail).
     testUserCredentials.ownerOf.push(collectionId);
     expect(typeof collectionId === 'number').toBeTruthy();
   });
@@ -116,7 +118,7 @@ describe('collections endpoints', () => {
 
     expect(Array.isArray(collection)).toBeTruthy();
     expect(collection[0]?.id).toBeTruthy();
-    expect(collection[0]?.tests).toBeTruthy();
+    expect(collection[0]?.records).toBeTruthy();
   });
 
   test('get collection fails with invalid id', async () => {

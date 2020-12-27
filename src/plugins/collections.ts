@@ -240,7 +240,7 @@ async function deleteCollectionHandler(
   const collectionId = parseInt(request.params.collectionId, 10);
 
   try {
-    // Delete all enrollments
+    // Delete all enrollments. Prisma transaction allow us to group 2 operatiosn into a single transaction
     await prisma.$transaction([
       prisma.collectionByUser.deleteMany({
         where: {
