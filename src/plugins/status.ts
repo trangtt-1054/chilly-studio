@@ -9,6 +9,9 @@ const plugin: Hapi.Plugin<undefined> = {
     server.route({
       method: 'GET',
       path: '/',
+      options: {
+        auth: false,
+      },
       //handler: function gets called every time a request comes in, ResponseToolKit is a package of utilities, allow us to send response to user
       handler: async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {
         //return boom.badImplementation("Internal Server Error");

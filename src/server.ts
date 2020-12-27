@@ -5,6 +5,7 @@ import userPlugin from './plugins/user';
 import authPlugin from './plugins/auth';
 import hapiAuthJWT from 'hapi-auth-jwt2';
 import emailPlugin from './plugins/email';
+import collectionsPlugin from './plugins/collections';
 
 const server: Hapi.Server = Hapi.server({
   port: process.env.PORT || 3000,
@@ -19,6 +20,7 @@ export async function createServer(): Promise<Hapi.Server> {
     hapiAuthJWT,
     emailPlugin,
     authPlugin,
+    collectionsPlugin,
   ]);
   await server.initialize();
 

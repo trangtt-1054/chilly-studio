@@ -31,7 +31,7 @@ declare module '@hapi/hapi' {
     tokenId: number;
     isAdmin: boolean;
     // 👇 The courseIds that a user is a teacher of, thereby granting him permissions to change entitites
-    teacherOf: number[];
+    ownerOf: number[];
   }
 }
 
@@ -58,53 +58,55 @@ const validateAPIToken = async (
     return { isValid: false };
   }
 
-  try {
-    // Fetch the token from DB to verify it's valid
-    const fetchedToken = await prisma.token.findUnique({
-      where: {
-        id: tokenId,
-      },
-      include: {
-        user: true,
-      },
-    });
+  return { isValid: true };
 
-    // Check if token could be found in database and is valid
-    if (!fetchedToken || !fetchedToken?.valid) {
-      return { isValid: false, errorMessage: 'Invalid token' };
-    }
+  // try {
+  //   // Fetch the token from DB to verify it's valid
+  //   const fetchedToken = await prisma.token.findUnique({
+  //     where: {
+  //       id: tokenId,
+  //     },
+  //     include: {
+  //       user: true,
+  //     },
+  //   });
 
-    // Check token expiration
-    if (fetchedToken.expiration < new Date()) {
-      return { isValid: false, errorMessage: 'Token expired' };
-    }
+  //   // Check if token could be found in database and is valid
+  //   if (!fetchedToken || !fetchedToken?.valid) {
+  //     return { isValid: false, errorMessage: 'Invalid token' };
+  //   }
 
-    const teacherOf = await prisma.collectionByUser.findMany({
-      where: {
-        userId: fetchedToken.userId,
-        role: UserRole.ADMIN,
-      },
-      select: {
-        collectionId: true,
-      },
-    });
+  //   // Check token expiration
+  //   if (fetchedToken.expiration < new Date()) {
+  //     return { isValid: false, errorMessage: 'Token expired' };
+  //   }
 
-    // The token is valid. Pass the token payload (in `decoded`), userId, and isAdmin to `credentials`
-    // which is available in route handlers via request.auth.credentials
-    return {
-      isValid: true,
-      credentials: {
-        tokenId: decoded.tokenId,
-        userId: fetchedToken.userId,
-        isAdmin: fetchedToken.user.isAdmin,
-        // convert teacherOf into an array of courseIds
-        teacherOf: teacherOf.map(({ collectionId }) => collectionId),
-      },
-    };
-  } catch (error) {
-    request.log(['error', 'auth', 'db'], error);
-    return { isValid: false, errorMessage: 'DB Error' };
-  }
+  //   const ownerOf = await prisma.collectionByUser.findMany({
+  //     where: {
+  //       userId: fetchedToken.userId,
+  //       role: UserRole.OWNER,
+  //     },
+  //     select: {
+  //       collectionId: true,
+  //     },
+  //   });
+
+  //   // The token is valid. Pass the token payload (in `decoded`), userId, and isAdmin to `credentials`
+  //   // which is available in route handlers via request.auth.credentials
+  //   return {
+  //     isValid: true,
+  //     credentials: {
+  //       tokenId: decoded.tokenId,
+  //       userId: fetchedToken.userId,
+  //       isAdmin: fetchedToken.user.isAdmin,
+  //       // convert teacherOf into an array of courseIds
+  //       ownerOf: ownerOf.map(({ collectionId }) => collectionId),
+  //     },
+  //   };
+  // } catch (error) {
+  //   request.log(['error', 'auth', 'db'], error);
+  //   return { isValid: false, errorMessage: 'DB Error' };
+  // }
 };
 
 const loginHandler = async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {

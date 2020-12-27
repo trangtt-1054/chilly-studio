@@ -104,8 +104,8 @@ model RecordRate {
 //khi có 2 relation fields trỏ về cùng 1 model (ở đây là memberId và graderId của RecordRate) thì sẽ bị lỗi ambiguous relation => phải thêm name vào relation
 
 enum UserRole {
-  MEMBER
-  ADMIN
+  VIEWER
+  OWNER
 }
 
 enum TokenType {
