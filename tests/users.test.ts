@@ -15,6 +15,7 @@ describe('POST /users - create user', () => {
   let userId: number;
 
   test('create user', async () => {
+    //inject a synthetic request without having to run HTTP server
     const response = await server.inject({
       method: 'POST',
       url: '/users',

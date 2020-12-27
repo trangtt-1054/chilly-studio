@@ -1,6 +1,9 @@
 import Hapi from '@hapi/hapi';
 import boom from '@hapi/boom';
 import Joi from '@hapi/joi';
+import { API_AUTH_STRATEGY } from './auth';
+import Boom from '@hapi/boom';
+import { isRequestedUserOrAdmin, isAdmin } from '../auth-helpers';
 
 const userPlugin: Hapi.Plugin<undefined> = {
   name: 'app/users',
@@ -9,10 +12,26 @@ const userPlugin: Hapi.Plugin<undefined> = {
     //server.routes, we could start defining route and handlers
     server.route([
       {
+        method: 'GET',
+        path: '/profile',
+        handler: getAuthenticatedUser,
+        options: {
+          auth: {
+            mode: 'required',
+            strategy: API_AUTH_STRATEGY,
+          },
+        },
+      },
+      {
         method: 'POST',
         path: '/users',
         handler: createUserHandler,
         options: {
+          pre: [isAdmin],
+          auth: {
+            mode: 'required',
+            strategy: API_AUTH_STRATEGY,
+          },
           validate: {
             payload: UserInputValidator as any,
             failAction: (request, h, err) => {
@@ -27,6 +46,11 @@ const userPlugin: Hapi.Plugin<undefined> = {
         path: '/users/{userId}',
         handler: getUserHandler,
         options: {
+          pre: [isRequestedUserOrAdmin],
+          auth: {
+            mode: 'required',
+            strategy: API_AUTH_STRATEGY,
+          },
           validate: {
             params: Joi.object({
               userId: Joi.string().pattern(/^[0-9]+$/),
@@ -42,10 +66,35 @@ const userPlugin: Hapi.Plugin<undefined> = {
         path: '/users/{userId}',
         handler: deleteUserHandler,
         options: {
+          pre: [isRequestedUserOrAdmin],
+          auth: {
+            mode: 'required',
+            strategy: API_AUTH_STRATEGY,
+          },
           validate: {
             params: Joi.object({
               userId: Joi.string().pattern(/^[0-9]+$/),
             }) as any,
+            failAction: (request, h, err) => {
+              throw err;
+            },
+          },
+        },
+      },
+      {
+        method: 'PUT',
+        path: '/users/{userId}',
+        handler: updateUserHandler,
+        options: {
+          pre: [isRequestedUserOrAdmin],
+          auth: {
+            mode: 'required',
+            strategy: API_AUTH_STRATEGY,
+          },
+          validate: {
+            params: Joi.object({
+              userId: Joi.number().integer(),
+            }),
             failAction: (request, h, err) => {
               throw err;
             },
@@ -84,6 +133,33 @@ const UserInputValidator = Joi.object({
     tiktok: Joi.string().optional(),
   }),
 });
+
+async function getAuthenticatedUser(
+  request: Hapi.Request,
+  h: Hapi.ResponseToolkit
+) {
+  const { prisma } = request.server.app;
+  const { userId } = request.auth.credentials;
+
+  try {
+    const user = await prisma.user.findUnique({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        social: true,
+      },
+      where: {
+        id: userId,
+      },
+    });
+    return h.response(user || undefined).code(200);
+  } catch (err) {
+    request.log('error', err);
+    return Boom.badImplementation();
+  }
+}
 
 async function createUserHandler(
   request: Hapi.Request,
@@ -129,6 +205,28 @@ async function getUserHandler(
     return helper.response(user).code(200);
   } catch (error) {
     console.log(error);
+  }
+}
+
+async function updateUserHandler(
+  request: Hapi.Request,
+  h: Hapi.ResponseToolkit
+) {
+  const { prisma } = request.server.app;
+  const userId = parseInt(request.params.userId, 10);
+  const payload = request.payload as Partial<UserInput>;
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: payload,
+    });
+    return h.response(updatedUser).code(200);
+  } catch (err) {
+    request.log('error', err);
+    return Boom.badImplementation('failed to update user');
   }
 }
 

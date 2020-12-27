@@ -1,0 +1,60 @@
+name: otaku-studio
+# run everytime we push
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Service containers to run with `container-job`, allow us to create temporary services for the duration of test, in this case `postgres` service
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image, github actions will download the Postgres Docker image and run that
+        image: postgres
+        # Provide the password for postgres. Because this postgres database only runs for a couple of minutes during the test, username and password don't matter so much
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+        # some extra options recommended by github doc, to make sure Postgres is running and ready to accept requests
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    # env that is accessible to the job so that it knows how to connect to this Postgres service container, username password chính là cái mình define ở trên service
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/grading-app
+
+    # if 1 of the steps fails, the whole build will fail
+    steps:
+      - uses: actions/checkout@v2 # get source code of the repo
+      - uses: actions/setup-node@v1 # config node with options
+        with:
+          node-version: '14.x'
+      - run: npm ci
+      - run: npm run build
+      # run the migration in the test database
+      - run: npm run db:push
+      - run: npm run test
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' # Only deploy master
+    needs: test # if test fails, don't deploy
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm ci # install dependencies, each of job runs in isolation so we have to install dependencies twice
+      - name: Run production migration # call Prisma migrate, connect đến cái postgres ở trên và chạy migration => khi integration test run thì schema đã up to date
+        run: npm run migrate:up # production migration, ở bên job test là migration for test database.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # to run production migration we need access to the database, secrets là 1 cái functionality của github (vào setting (của repo) => secrets)
+      - uses: akhileshns/heroku-deploy@v3.4.6
+        name: Deploy to Heroku
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }} # API KEY để github action authenticate against Heroku
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
