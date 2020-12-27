@@ -38,8 +38,8 @@ declare module '@hapi/hapi' {
 //runtime validation
 const apiTokenSchema = Joi.object({
   tokenId: Joi.number().integer().required(),
-  iat: Joi.any(),
-  exp: Joi.any(),
+  iat: Joi.any(), //automatically added by JWT
+  exp: Joi.any(), //automatically added by JWT
 });
 
 const validateAPIToken = async (
@@ -58,55 +58,36 @@ const validateAPIToken = async (
     return { isValid: false };
   }
 
-  return { isValid: true };
+  try {
+    // Fetch the token from DB to verify it's valid
+    const fetchedToken = await prisma.token.findUnique({
+      where: {
+        id: tokenId,
+      },
+      include: {
+        user: true,
+      },
+    });
 
-  // try {
-  //   // Fetch the token from DB to verify it's valid
-  //   const fetchedToken = await prisma.token.findUnique({
-  //     where: {
-  //       id: tokenId,
-  //     },
-  //     include: {
-  //       user: true,
-  //     },
-  //   });
+    // Check if token could be found in database and is valid
+    if (!fetchedToken || !fetchedToken?.valid) {
+      return { isValid: false, errorMessage: 'Invalid token baby!' };
+    }
 
-  //   // Check if token could be found in database and is valid
-  //   if (!fetchedToken || !fetchedToken?.valid) {
-  //     return { isValid: false, errorMessage: 'Invalid token' };
-  //   }
+    // Check token expiration
+    if (fetchedToken.expiration < new Date()) {
+      return { isValid: false, errorMessage: 'Token expired baby!' };
+    }
 
-  //   // Check token expiration
-  //   if (fetchedToken.expiration < new Date()) {
-  //     return { isValid: false, errorMessage: 'Token expired' };
-  //   }
-
-  //   const ownerOf = await prisma.collectionByUser.findMany({
-  //     where: {
-  //       userId: fetchedToken.userId,
-  //       role: UserRole.OWNER,
-  //     },
-  //     select: {
-  //       collectionId: true,
-  //     },
-  //   });
-
-  //   // The token is valid. Pass the token payload (in `decoded`), userId, and isAdmin to `credentials`
-  //   // which is available in route handlers via request.auth.credentials
-  //   return {
-  //     isValid: true,
-  //     credentials: {
-  //       tokenId: decoded.tokenId,
-  //       userId: fetchedToken.userId,
-  //       isAdmin: fetchedToken.user.isAdmin,
-  //       // convert teacherOf into an array of courseIds
-  //       ownerOf: ownerOf.map(({ collectionId }) => collectionId),
-  //     },
-  //   };
-  // } catch (error) {
-  //   request.log(['error', 'auth', 'db'], error);
-  //   return { isValid: false, errorMessage: 'DB Error' };
-  // }
+    // The token is valid. Pass the token payload (in `decoded`), userId, and isAdmin to `credentials`
+    // which is available in route handlers via request.auth.credentials
+    return {
+      isValid: true,
+    };
+  } catch (error) {
+    request.log(['error', 'auth', 'db'], error);
+    return { isValid: false, errorMessage: 'DB Error' };
+  }
 };
 
 const loginHandler = async (request: Hapi.Request, h: Hapi.ResponseToolkit) => {
