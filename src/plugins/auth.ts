@@ -79,13 +79,31 @@ const validateAPIToken = async (
       return { isValid: false, errorMessage: 'Token expired baby!' };
     }
 
+    const ownerOf = await prisma.collectionByUser.findMany({
+      where: {
+        userId: fetchedToken.userId,
+        role: UserRole.OWNER,
+      },
+      select: {
+        collectionId: true,
+      },
+    });
+
     // The token is valid. Pass the token payload (in `decoded`), userId, and isAdmin to `credentials`
     // which is available in route handlers via request.auth.credentials
     return {
       isValid: true,
+      //pass a credentials object to decide what user is allowed to do (authorization), anything here will be available on request.auth.credentials
+      credentials: {
+        //hello: 'trang',
+        tokenId: decoded.tokenId,
+        isAdmin: fetchedToken.user.isAdmin,
+        ownerOf: ownerOf.map(({ collectionId }) => collectionId),
+      },
     };
   } catch (error) {
     request.log(['error', 'auth', 'db'], error);
+    console.log(error);
     return { isValid: false, errorMessage: 'DB Error' };
   }
 };

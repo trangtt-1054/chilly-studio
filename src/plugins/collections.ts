@@ -160,7 +160,7 @@ async function getCollectionsHandler(
   h: Hapi.ResponseToolkit
 ) {
   const { prisma } = request.server.app;
-
+  console.log(request.auth.credentials);
   try {
     const collections = await prisma.collection.findMany({
       include: {
