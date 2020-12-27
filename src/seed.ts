@@ -80,7 +80,7 @@ async function main() {
       },
       collections: {
         create: {
-          role: 'MEMBER',
+          role: 'VIEWER',
           collection: {
             connect: { id: collection.id },
           },

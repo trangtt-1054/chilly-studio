@@ -65,6 +65,7 @@ const collectionsPlugin = {
         path: '/collections/{collectionId}',
         handler: updateCollectionHandler,
         options: {
+          //pre functions get called before handler, tách riêng thành pre function chứ ko cho vào handler để sau này còn reuse đc
           pre: [isOwnerOfCollectionOrAdmin],
           auth: {
             mode: 'required',
@@ -114,7 +115,7 @@ const collectionInputValidator = Joi.object({
     create: (schema) => schema.required(),
     update: (schema) => schema.optional(),
   }),
-  collectionDetails: Joi.string().alter({
+  details: Joi.string().alter({
     create: (schema) => schema.required(),
     update: (schema) => schema.optional(),
   }),
@@ -125,7 +126,7 @@ const updateCollectionValidator = collectionInputValidator.tailor('update');
 
 interface CollectionInput {
   name: string;
-  collectionDetails: string;
+  details: string;
 }
 
 async function getCollectionById(
@@ -187,10 +188,10 @@ async function createCollectionHandler(
     const createdCollection = await prisma.collection.create({
       data: {
         name: payload.name,
-        details: payload.collectionDetails,
+        details: payload.details,
         members: {
           create: {
-            role: 'OWNER',
+            role: UserRole.OWNER, //khi create collection thì đc tự động assigned thành OWNER của collection đó
             user: {
               connect: {
                 id: userId,
@@ -203,6 +204,7 @@ async function createCollectionHandler(
     return h.response(createdCollection).code(201);
   } catch (err) {
     request.log('error', err);
+
     return Boom.badImplementation('failed to create collection');
   }
 }
@@ -225,6 +227,7 @@ async function updateCollectionHandler(
     return h.response(updatedCollection).code(200);
   } catch (err) {
     request.log('error', err);
+    console.log(err);
     return Boom.badImplementation('failed to update collection');
   }
 }

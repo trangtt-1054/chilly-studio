@@ -96,6 +96,7 @@ const validateAPIToken = async (
       //pass a credentials object to decide what user is allowed to do (authorization), anything here will be available on request.auth.credentials
       credentials: {
         //hello: 'trang',
+        userId: fetchedToken.userId,
         tokenId: decoded.tokenId,
         isAdmin: fetchedToken.user.isAdmin,
         ownerOf: ownerOf.map(({ collectionId }) => collectionId),

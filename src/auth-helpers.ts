@@ -13,7 +13,7 @@ export async function isOwnerOfCollectionOrAdmin(
     return h.continue;
   }
 
-  const collectionId = parseInt(request.params.courseId, 10);
+  const collectionId = parseInt(request.params.collectionId, 10);
 
   if (ownerOf?.includes(collectionId)) {
     return h.continue;
