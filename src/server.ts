@@ -9,6 +9,12 @@ import collectionsPlugin from './plugins/collections';
 import recordsPlugin from './plugins/records';
 import recordRatesPlugin from './plugins/record-rates';
 import userCollectionPlugin from './plugins/user-collections';
+import dotenv from 'dotenv';
+import hapiPino from 'hapi-pino';
+
+dotenv.config();
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 const server: Hapi.Server = Hapi.server({
   port: process.env.PORT || 3000,
@@ -16,6 +22,19 @@ const server: Hapi.Server = Hapi.server({
 });
 
 export async function createServer(): Promise<Hapi.Server> {
+  await server.register({
+    plugin: hapiPino,
+    options: {
+      logEvents:
+        process.env.CI === 'true' || process.env.TEST === 'true'
+          ? false
+          : undefined,
+      prettyPrint: process.env.NODE_ENV !== 'production',
+      // Redact Authorization headers, see https://getpino.io/#/docs/redaction
+      redact: ['req.headers.authorization'],
+    },
+  });
+
   await server.register([
     StatusPlugin,
     prismaPlugin,
