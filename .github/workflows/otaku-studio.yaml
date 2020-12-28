@@ -36,20 +36,20 @@ jobs:
       - uses: actions/setup-node@v1 # config node with options
         with:
           node-version: '14.x'
-      - run: npm ci
-      - run: npm run build
+      - run: yarn ci
+      - run: yarn build
       # run the migration in the test database
-      - run: npm run db:push
-      - run: npm run test
+      - run: yarn db:push
+      - run: yarn test
   deploy:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/master' # Only deploy master
     needs: test # if test fails, don't deploy
     steps:
       - uses: actions/checkout@v2
-      - run: npm ci # install dependencies, each of job runs in isolation so we have to install dependencies twice
+      - run: yarn ci # install dependencies, each of job runs in isolation so we have to install dependencies twice
       - name: Run production migration # call Prisma migrate, connect đến cái postgres ở trên và chạy migration => khi integration test run thì schema đã up to date
-        run: npm run migrate:up # production migration, ở bên job test là migration for test database.
+        run: yarn migrate:up # production migration, ở bên job test là migration for test database.
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }} # to run production migration we need access to the database, secrets là 1 cái functionality của github (vào setting (của repo) => secrets)
       - uses: akhileshns/heroku-deploy@v3.4.6

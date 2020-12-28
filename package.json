@@ -32,13 +32,17 @@
     "typescript": "^3.9.6"
   },
   "scripts": {
+    "build": "prisma generate && tsc",
+    "start": "node dist/index.js",
+    "compile": "tsc",
     "dev": "ts-node-dev --respawn ./src/index.ts",
     "seed": "ts-node ./src/seed.ts",
     "test": "jest",
     "postgres:start": "docker-compose up -d",
     "migrate:save": "prisma migrate --experimental save",
     "migrate:up": "prisma migrate --experimental up --auto-approve --create-db",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push --preview-feature --ignore-migrations"
   },
   "engines": {
     "node": ">=12.0.0"
