@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-node@v1 # config node with options
         with:
           node-version: '14.x'
-      - run: yarn ci
+      - run: yarn
       - run: yarn build
       # run the migration in the test database
       - run: yarn db:push
@@ -47,7 +47,7 @@ jobs:
     needs: test # if test fails, don't deploy
     steps:
       - uses: actions/checkout@v2
-      - run: yarn ci # install dependencies, each of job runs in isolation so we have to install dependencies twice
+      - run: yarn # install dependencies, each of job runs in isolation so we have to install dependencies twice
       - name: Run production migration # call Prisma migrate, connect đến cái postgres ở trên và chạy migration => khi integration test run thì schema đã up to date
         run: yarn migrate:up # production migration, ở bên job test là migration for test database.
         env:
