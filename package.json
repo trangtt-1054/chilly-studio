@@ -42,7 +42,7 @@
     "migrate:save": "prisma migrate --experimental save",
     "migrate:up": "prisma migrate --experimental up --auto-approve --create-db",
     "prisma:generate": "prisma generate",
-    "db:push": "prisma db push --preview-feature --ignore-migrations"
+    "db:push": "prisma db push --preview-feature"
   },
   "engines": {
     "node": ">=12.0.0"
