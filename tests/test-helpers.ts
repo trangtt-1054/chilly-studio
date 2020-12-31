@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
-import { TokenType, UserRole } from '@prisma/client';
-import { add } from 'date-fns';
-import { AuthCredentials } from '@hapi/hapi';
+import { PrismaClient } from "@prisma/client";
+import { TokenType, UserRole } from "@prisma/client";
+import { add } from "date-fns";
+import { AuthCredentials } from "@hapi/hapi";
 
 // Helper function to create a test user and return the credentials object the same way that the auth plugin does
 export const createUserCredentials = async (
@@ -41,7 +41,7 @@ export const createUserCredentials = async (
 };
 
 // Helper function to create a course, test, student, and a teacher
-export const createCourseTestStudentTeacher = async (
+export const createCollectionRecordViewerOwner = async (
   prisma: PrismaClient
 ): Promise<{
   collectionId: number;
@@ -55,7 +55,7 @@ export const createCourseTestStudentTeacher = async (
   const viewerCredentials = await createUserCredentials(prisma, false);
 
   const now = Date.now().toString();
-  const course = await prisma.collection.create({
+  const collection = await prisma.collection.create({
     data: {
       name: `test-course-${now}`,
       details: `test-course-${now}-details`,
@@ -83,7 +83,7 @@ export const createCourseTestStudentTeacher = async (
         create: [
           {
             date: add(new Date(), { days: 7 }),
-            name: 'First test',
+            name: "First test",
           },
         ],
       },
@@ -95,11 +95,11 @@ export const createCourseTestStudentTeacher = async (
 
   // 👇Update the credentials as they're static in tests (not fetched automatically on request by the auth plugin)
   const ownerOf = ownerCredentials.ownerOf as number[];
-  ownerOf.push(course.id);
+  ownerOf.push(collection.id);
 
   return {
-    collectionId: course.id,
-    recordId: course.records[0].id,
+    collectionId: collection.id,
+    recordId: collection.records[0].id,
     ownerId: ownerCredentials.userId as number,
     ownerCredentials: ownerCredentials,
     viewerId: viewerCredentials.userId as number,

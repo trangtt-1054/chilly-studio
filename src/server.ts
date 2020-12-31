@@ -1,24 +1,24 @@
-import Hapi from '@hapi/hapi';
-import StatusPlugin from './plugins/status';
-import prismaPlugin from './plugins/prisma';
-import userPlugin from './plugins/user';
-import authPlugin from './plugins/auth';
-import hapiAuthJWT from 'hapi-auth-jwt2';
-import emailPlugin from './plugins/email';
-import collectionsPlugin from './plugins/collections';
-import recordsPlugin from './plugins/records';
-import recordRatesPlugin from './plugins/record-rates';
-import userCollectionPlugin from './plugins/user-collections';
-import dotenv from 'dotenv';
-import hapiPino from 'hapi-pino';
+import Hapi from "@hapi/hapi";
+import statusPlugin from "./plugins/status";
+import prismaPlugin from "./plugins/prisma";
+import userPlugin from "./plugins/user";
+import authPlugin from "./plugins/auth";
+import hapiAuthJWT from "hapi-auth-jwt2";
+import emailPlugin from "./plugins/email";
+import collectionsPlugin from "./plugins/collections";
+import recordsPlugin from "./plugins/records";
+import recordRatesPlugin from "./plugins/record-rates";
+import userCollectionPlugin from "./plugins/user-collections";
+import dotenv from "dotenv";
+import hapiPino from "hapi-pino";
 
 dotenv.config();
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 const server: Hapi.Server = Hapi.server({
   port: process.env.PORT || 3000,
-  host: process.env.HOST || 'localhost',
+  host: process.env.HOST || "localhost",
 });
 
 export async function createServer(): Promise<Hapi.Server> {
@@ -26,22 +26,22 @@ export async function createServer(): Promise<Hapi.Server> {
     plugin: hapiPino,
     options: {
       logEvents:
-        process.env.CI === 'true' || process.env.TEST === 'true'
+        process.env.CI === "true" || process.env.TEST === "true"
           ? false
           : undefined,
-      prettyPrint: process.env.NODE_ENV !== 'production',
+      prettyPrint: process.env.NODE_ENV !== "production",
       // Redact Authorization headers, see https://getpino.io/#/docs/redaction
-      redact: ['req.headers.authorization'],
+      redact: ["req.headers.authorization"],
     },
   });
 
   await server.register([
-    StatusPlugin,
+    hapiAuthJWT,
+    authPlugin,
+    statusPlugin,
     prismaPlugin,
     userPlugin,
-    hapiAuthJWT,
     emailPlugin,
-    authPlugin,
     collectionsPlugin,
     recordsPlugin,
     recordRatesPlugin,
@@ -58,7 +58,7 @@ export async function startServer(server: Hapi.Server): Promise<Hapi.Server> {
   return server;
 }
 
-process.on('unhandledRejection', (err) => {
+process.on("unhandledRejection", (err) => {
   console.log(err);
   process.exit(1);
 });
