@@ -1,35 +1,53 @@
-import Hapi from '@hapi/hapi';
-import boom from '@hapi/boom';
-import Joi from '@hapi/joi';
-import { API_AUTH_STRATEGY } from './auth';
-import Boom from '@hapi/boom';
-import { isRequestedUserOrAdmin, isAdmin } from '../auth-helpers';
+import Hapi from "@hapi/hapi";
+import boom from "@hapi/boom";
+import Joi from "@hapi/joi";
+import { API_AUTH_STRATEGY } from "./auth";
+import Boom from "@hapi/boom";
+import { isRequestedUserOrAdmin, isAdmin } from "../auth-helpers";
 
 const userPlugin: Hapi.Plugin<undefined> = {
-  name: 'app/users',
-  dependencies: ['prisma'], //load 'prisma' plugin before loading this plugin => to make sure that prisma instance is accessible inside handler
+  name: "app/users",
+  dependencies: ["prisma"], //load 'prisma' plugin before loading this plugin => to make sure that prisma instance is accessible inside handler
   register: async function (server: Hapi.Server) {
     //server.routes, we could start defining route and handlers
     server.route([
       {
-        method: 'GET',
-        path: '/profile',
+        method: "GET",
+        path: "/profile",
         handler: getAuthenticatedUser,
         options: {
           auth: {
-            mode: 'required',
+            mode: "required",
             strategy: API_AUTH_STRATEGY,
           },
         },
       },
       {
-        method: 'POST',
-        path: '/users',
+        method: "GET",
+        path: "/users",
+        handler: getAllUsersHandler,
+        options: {
+          pre: [isAdmin],
+          auth: {
+            mode: "required",
+            strategy: API_AUTH_STRATEGY,
+          },
+          validate: {
+            failAction: (request, h, err) => {
+              // show validation errors to user https://github.com/hapijs/hapi/issues/3706
+              throw err;
+            },
+          },
+        },
+      },
+      {
+        method: "POST",
+        path: "/users",
         handler: createUserHandler,
         options: {
           pre: [isAdmin],
           auth: {
-            mode: 'required',
+            mode: "required",
             strategy: API_AUTH_STRATEGY,
           },
           validate: {
@@ -42,13 +60,13 @@ const userPlugin: Hapi.Plugin<undefined> = {
         },
       },
       {
-        method: 'GET',
-        path: '/users/{userId}',
+        method: "GET",
+        path: "/users/{userId}",
         handler: getUserHandler,
         options: {
           pre: [isRequestedUserOrAdmin],
           auth: {
-            mode: 'required',
+            mode: "required",
             strategy: API_AUTH_STRATEGY,
           },
           validate: {
@@ -62,18 +80,18 @@ const userPlugin: Hapi.Plugin<undefined> = {
         },
       },
       {
-        method: 'DELETE',
-        path: '/users/{userId}',
+        method: "DELETE",
+        path: "/users/{userId}",
         handler: deleteUserHandler,
         options: {
           pre: [isRequestedUserOrAdmin],
           auth: {
-            mode: 'required',
+            mode: "required",
             strategy: API_AUTH_STRATEGY,
           },
           validate: {
             params: Joi.object({
-              userId: Joi.string().pattern(/^[0-9]+$/),
+              userId: Joi.number().integer(),
             }) as any,
             failAction: (request, h, err) => {
               throw err;
@@ -82,13 +100,13 @@ const userPlugin: Hapi.Plugin<undefined> = {
         },
       },
       {
-        method: 'PUT',
-        path: '/users/{userId}',
+        method: "PUT",
+        path: "/users/{userId}",
         handler: updateUserHandler,
         options: {
           pre: [isRequestedUserOrAdmin],
           auth: {
-            mode: 'required',
+            mode: "required",
             strategy: API_AUTH_STRATEGY,
           },
           validate: {
@@ -156,8 +174,31 @@ async function getAuthenticatedUser(
     });
     return h.response(user || undefined).code(200);
   } catch (err) {
-    request.log('error', err);
+    request.log("error", err);
     return Boom.badImplementation();
+  }
+}
+
+async function getAllUsersHandler(
+  request: Hapi.Request,
+  h: Hapi.ResponseToolkit
+) {
+  const { prisma } = request.server.app;
+
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        social: true,
+      },
+    });
+    return h.response(users).code(200);
+  } catch (err) {
+    request.log("error", err);
+    return Boom.badImplementation("failed to get users");
   }
 }
 
@@ -182,7 +223,7 @@ async function createUserHandler(
     return helper.response({ id: newUser.id }).code(201);
   } catch (error) {
     console.log(error);
-    return boom.badImplementation('Failed to create new user');
+    return boom.badImplementation("Failed to create new user");
   }
 }
 
@@ -200,7 +241,7 @@ async function getUserHandler(
     });
 
     if (!user) {
-      return boom.notFound('User not found');
+      return boom.notFound("User not found");
     }
     return helper.response(user).code(200);
   } catch (error) {
@@ -225,8 +266,8 @@ async function updateUserHandler(
     });
     return h.response(updatedUser).code(200);
   } catch (err) {
-    request.log('error', err);
-    return Boom.badImplementation('failed to update user');
+    request.log("error", err);
+    return Boom.badImplementation("failed to update user");
   }
 }
 
@@ -245,6 +286,6 @@ async function deleteUserHandler(
     return helper.response().code(204);
   } catch (error) {
     console.log(error);
-    return boom.badImplementation('failed to delete user');
+    return boom.badImplementation("failed to delete user");
   }
 }
